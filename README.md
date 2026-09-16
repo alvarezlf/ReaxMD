@@ -1,62 +1,64 @@
 # ReaxMD
 
-mdanalyzer is a program that analyzes trajectory files and shows the bond formation and breaking events. Interatomic distances, Dij, are compared to the bonding distance Bij=(alpha)*(covalent_radii_1 + covalent_radii_2), where alpha=1.3. If Dij is lower than Bij, then there is a bond. If Dij increases above Bij, the bond is broken. If Dij decreases below Bij, a bond is formed.
+ReaxMD is a program that analyzes trajectory files and displays bond formation/breaking events. Interatomic distances, dij, are compared to the bond length cutoff $D^{cutoff}_{ij}=\alpha*(r_i + r_j)$, where $\alpha$ was optimized to 1.30 for solvated and gas-phase dynamics and -a 1.0 is suggested for solid state. If Dij is lower than Bij, then there is a bond. If Dij increases above Bij, the bond is broken. If Dij decreases below Bij, a bond is formed.
 
-It is also possible to analyze the Wannier center's (aka. "wanniers"). The distance between the wanniers and the atoms considers a margin of (beta)*(covalent_radii + gamma). Beta and gamma were obtained empirically by analyzing trajectory files without reactions and minimizing the amount of wanniers movement.
+It is also possible to analyze the Wannier center's (aka. "wanniers"). The distance between the wanniers and the atoms considers a tolerance of $d^\text{wannier}_i = \beta*(r_i + \gamma)$. $\beta$ and $\gamma$ were obtained empirically by analyzing trajectory files without reactions and minimizing the amount of wanniers movement.
 
 Covalent radii were obtained from "B. Cordero et. al., Dalton Transactions, 2008, 21. https://doi.org/10.1039/B801115J" and included in the file "covalent_radii.ssv". An alternative covalent radii data file can be used with "-d path/to/file", but the ssv format (space separated values) must be kept as " Z    Element    r".
 
+## INSTALATION
+### Option 1: Download executable
+- The ```reaxmd``` executable is provided. Copy it into your ```home/.local/bin``` folder and execute it from the command line as
+```
+reaxmd trajectory.xyz A B C
+```
 
+### Option 2: Download python script
+- Download the file ```reaxmd.py``` and executing with Python3 as
+```
+python3 reaxmd.py trajectory.xyz A B C
+```
+- The python file can be compiled with PyInstaller (Recommended)
 
-#### INSTALATION
-Although it can be executed directly with python ($python (or python3) mdanalyzer.py trajectoryfile.xyz A B C), an instalation with pyinstaller is recomended as follows:
+## USAGE
+### Check version
+```
+reaxmd -v
+```
+Latest version: 260505
 
-mkdir ~/bin
-pyinstaller --onefile mdanalyzer.py
-mv dist/mdanalyzer ~/bin/
+### Basic usage
+```
+reaxmd trajectory.xyz A B C
+```
+- ```trajectory.xyz```: trajectory file in .xyz format, or path to it.
+- ```A B C```: cell dimensions in atomic units. ReaxMD was programmed for periodic boundary conditions. Single cells can be analyzed by specifying dimensions larger to the actual ones, preventing bonding between frontier atoms.
+- It is suggested to include ```> trajectory.txt``` at the end to save the output into a text file.
 
+### Batch analysis
+```
+reaxmd *.xyz A B C
+```
+- Several trajectory files can be provided to analyze with the same cell dimensions.
+- To save the outputs in separated files, you can execute a command like (example for Bash):
+```
+for trajectory in *.xyz; do reaxmd $trajectory A B C > ${trajectory%.xyz}; done
+```
 
+### Atomic units
+- Use the flag ```-au``` to indicate that the cell dimensions are given in atomic units:
+```
+reaxmd trajectory.xyz A B C -au
+```
 
-#### USAGE
-$ mdanalyzer [-h] [-a ALPHA] [-b BETA] [-e ELEMENT] [-g GAMMA] [-o OPTIONS] [-r RADII] [-ro] [-t TIMESTEP] [--version] trajectory_file a b c
-
-positional arguments:
-  trajectory_file       name of the trajectory file.
-  a                     A length of the cell in Angstrom.
-  b                     B length of the cell in Angstrom.
-  c                     C length of the cell in Angstrom.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -a ALPHA, --alpha ALPHA
-                        Alpha value for bond lengths as a*(r1+r2). Default value: 1.3
-  -b BETA, --beta BETA  Beta value for Wannier centers proximities as b*(ri+g). Default value: 1.25
-  -e ELEMENT, --element ELEMENT
-                        "-e El" analyzes only the bonds involving element El. "-e E1-E2" analyzes only bonds between elements E1 and E2.
-  -g GAMMA, --gamma GAMMA
-                        Gamma value for Wannier centers proximities as b*(ri+g). Default value: 0.31
-  -o OPTIONS, --options OPTIONS
-                        "-o mtwf", where:
-                        m writes a file "trajectory-molecules.txt" with the reactive molecules.
-                        t writes a trajectory file "trajectory_file-H.xyz", where the atoms
-                        involved in reactions are replaced by Si and the Wannier centers (if wt or tw ) by He.
-                        w analyzes the Wannier centers.
-                        f filters the Wannier centers close to
-                        reactive atoms. Use with option "w"
-  -r RADII, --radii RADII
-                        Alternative full path to covalent radii data.
-  -ro, --reaction_only  Print reaction only
-  -t TIMESTEP, --timestep TIMESTEP
-                        Prints the time in ps next to the step number. Timestep = (MD timestep) x (MD steps between trajectory steps)
-  --version             Print version information
-
-
-
-#### EXAMPLES
 Some examples are provided in the folder "examples". All of those files were used for testing the program during the development. In every file, the cell dimensions are given in the second line.
 
-## Example 1
-> mdanalyzer bp3n/bp3n-tra3.xyz 12.7 12.7 12.7 > bp3n/bp3n-tra3.log
+### Example 1: Default usage
+```
+reaxmd bp3n/bp3n-tra3.xyz 12.7 12.7 12.7
+```
+Output
+```
 trajectory file: bp3n-tra3.xyz
 atoms: 162
 steps: 50
@@ -67,12 +69,61 @@ step 43: bond (39)O-H(91) is formed.
 step 44: bond (34)O-H(138) is broken.
 NET REACTION:
 2 HO + C14H12O3  ->  C14H11O3 + H3O2
+```
+- The atomic IDs in parentesys corresponds with the order of the atoms in the trajectory file, starting from 1.
 
-# The atomic IDs in parentesys corresponds with the order of the atoms in the trajectory file, starting from 1.
+### Example 2: Save output
+```
+reaxmd bp4l-tra.xyz 12.7 12.7 12.7 -e C > bp4l-tra.log
+```
+then open the file bp4l-tra.log with any external file. In a bash command line you can use ```cat```:
+```
+cat bp4l/bp4l-tra.log
+```
+Output:
+```
+trajectory file: bp4l/bp4l-tra.xyz
+atoms: 157
+steps: 1900
+step 1205: bond (62)C-O(16) is formed.
+step 1471: bond (62)C-S(1) is broken.
+NET REACTION:
+CS  ->  CO
+```
+- There are several reactions in this trajectory file, but only the reactions involving C atoms are shown.
+- In this case, the reaction "H2O(16) + Ar(62)-S(1)O3 -> Ar(62)-H2O(16)+ + S(1)O3-" is observed.
 
+### Example 3: Elements
+Use the flag ```-e E1-E2``` to specify elements:
+- Give a single element ```E1``` to track reactions between ```E1``` with all other atoms. </br>
+Command:
+```
+reaxmd bp3n/bp3n-tra.xyz 12.7 12.7 12.7 -e C | grep C
+```
+Output:
+```
+step 1236: bond (60)C-O(11) is formed.
+step 3436: bond (62)C-O(41) is formed.
+step 15422: bond (60)C-C(62) is broken.
+```
+- Give two elements ```E1-E2``` to track a particular kind of bond. The same element can also be provided as ```E1-E1```.</br>
+Command:
+```
+reaxmd bp3n/bp3n-tra.xyz 12.7 12.7 12.7 -e C-O | grep C
+```
+Output:
+```
+step 1236: bond (60)C-O(11) is formed.
+step 3436: bond (62)C-O(41) is formed.
+```
+- All of these cases can be used to 1. reduce the length of the output, and 2. reduce the execution time.
 
-## Example 2
-> mdanalyzer bp3n/bp3n-ion3.xyz 12.7 12.7 12.7 -o w > bp3n/bp3n-ion3.log
+### Example 4: Wannier centers
+```
+reaxmd bp3n/bp3n-ion3.xyz 12.7 12.7 12.7 -o w > bp3n/bp3n-ion3.log
+```
+Output:
+```
 trajectory file: bp3n-ion3.xyz
 atoms: 616
 steps: 50
@@ -93,43 +144,64 @@ step 9: Wannier center 612 approached C(63).
 ...
 NET REACTION:
 2 HO + C14H12O3  ->  C14H11O3 + H3O2
-# This trajectory file has the same previous reaction. It is recomended to save the outputs for and then look for specific symbols and IDs.
+```
+- Same reaction as in the previous example, but including the Wannier centers.
+- Save the output and look for specific symbols and IDs using external (notes, kate, grep).
 
-
-## Example 3
-> mdanalyzer bp4l/bp4l-tra.xyz 12.7 12.7 12.7 -e C > bp4l/bp4l-tra.log
-trajectory file: bp4l/bp4l-tra.xyz
-atoms: 157
-steps: 1900
-step 1205: bond (62)C-O(16) is formed.
-step 1471: bond (62)C-S(1) is broken.
-NET REACTION:
-CS  ->  CO
-# There are several reactions in this trajectory file, but only the reactions involving C atoms are shown. In this case, the reaction "H2O(16) + Ar(62)-S(1)O3 -> Ar(62)-H2O(16)+ + S(1)O3-" is observed.
-
-
-## Example 4
-bp3n-tra/bp3n-tra.xyz
-    > mdanalyzer bp3n/bp3n-tra.xyz 12.7 12.7 12.7 > bp3n/full.log
-    > mdanalyzer bp3n/bp3n-tra.xyz 12.7 12.7 12.7 -e C > bp3n/C.log
-    > mdanalyzer bp3n/bp3n-tra.xyz 12.7 12.7 12.7 -e C-O > bp3n/C-O.log
-# When looking for specific bonds or elements, the options "-e El" and "-e E1-E2" can be used to reduce the time. In the previous example, the time elapsed was 7.6 min for analyzing every bond, 1.3 min for bonds involving C, and 26 sec for C-O bonds only.
-    > grep C bp3n/full.log
-    step 1236: bond (11)O-C(60) is formed.
-    step 3436: bond (41)O-C(62) is formed.
-    step 15422: bond (60)C-C(62) is broken.
-    > grep C bp3n/C.log
-    step 1236: bond (60)C-O(11) is formed.
-    step 3436: bond (62)C-O(41) is formed.
-    step 15422: bond (60)C-C(62) is broken.
-    > grep C bp3n/C-O.log
-    step 1236: bond (60)C-O(11) is formed.
-    step 3436: bond (62)C-O(41) is formed.
-
-
-#### Finally
-There are more options available, but this is the basic and intermedium usage. Don't hesitate to write me an email if you have further questions.
-
+## Finally
+This is the basic and intermediate usage. Don't hesitate to write me an email if you have further questions. 
 -Luis Alvarez F.-
 alvarez@theochem.uni-hannover.de
+
+### Full help: 
+```
+reaxmd -h
+```
+Output
+```
+usage: reaxmd [-h] [-au] [-a ALPHA] [-d DELTA] [-b BETA] [-g GAMMA] [-e ELEMENT] [-o OPTIONS] [-r RADII] [-ro] [-s STRIDE] [-t TIMESTEP] [-v] [trajectory_files [trajectory_files ...]] A B C
+
+positional arguments:
+  trajectory_files      Path(s) to trajectory file(s).
+  A                     A length of the cell in Angstrom.
+  B                     B length of the cell in Angstrom.
+  C                     C length of the cell in Angstrom.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -au, --atomic_units   Specifies that the cell side lengths are in atomic units.
+  -a ALPHA, --alpha ALPHA
+                        Alpha value for bond lengths as alpha * (r_i + r_j) +
+                        delta. Default value: 1.30
+  -d DELTA, --delta DELTA
+                        Delta value for bond lengths as alpha * (r_i + r_j) +
+                        delta. Default value: 0.00
+  -b BETA, --beta BETA  Beta value for Wannier centers proximities as beta *
+                        r_i + gamma. Default value: 1.30
+  -g GAMMA, --gamma GAMMA
+                        Gamma value for Wannier centers proximities as beta *
+                        r_i + gamma. Default value: 0.40
+  -e ELEMENT, --element ELEMENT
+                        "-e El" analyzes only the bonds involving element El.
+                        "-e E1-E2" analyzes only bonds between elements E1 and
+                        E2.
+  -o OPTIONS, --options OPTIONS
+                        "-o hmwf", where: h writes a trajectory file
+                        "trajectory_file-H.xyz", where the atoms involved in
+                        reactions are replaced by Si and the Wannier centers
+                        (include "w" as option) by He. m writes a file
+                        "trajectory-molecules.txt" with the reactive
+                        molecules. w analyzes the Wannier centers. f filters
+                        equilibrium reactions within 100 MD steps.
+  -r RADII, --radii RADII
+                        Full path to alternative covalent radii data file.
+  -ro, --reaction_only  Print reaction only.
+  -s STRIDE, --stride STRIDE
+                        Jumps the specified amount of steps.
+  -t TIMESTEP, --timestep TIMESTEP
+                        Prints the time in ps next to the step number.
+                        Timestep = (MD timestep) x (MD steps between
+                        trajectory steps)
+  -v, --version         Print version information
+```
 
